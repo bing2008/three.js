@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>three.js webgl - STL</title>
+		<title>three.js webgl - SVLX</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -39,12 +39,11 @@
 	<body>
 		<div id="info">
 			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> -
-			STL loader test by <a href="https://github.com/aleeper" target="_blank" rel="noopener">aleeper</a>. PR2 head from <a href="http://www.ros.org/wiki/pr2_description">www.ros.org</a>
+			SVLX loader test by <a href="https://sview.sv3d.cn" target="_blank" rel="noopener">SView</a>. 
 		</div>
 
 		<script src="../build/three.js"></script>
 
-		<script src="js/loaders/STLLoader.js"></script>
 		<script src="js/loaders/SVLXLoader.js"></script>
 		<script src="js/jszip/jszip.min.js"></script>
 		<script src="js/jszip/jszip-utils.min.js"></script>
@@ -100,16 +99,17 @@
                 var loader = new THREE.SVLXloader();
 				var material = new THREE.MeshPhongMaterial( { color: 0xAAAAAA, specular: 0x111111, shininess: 200 } );
 
-				loader.load( './models/svlx/0132-0005c.svlx', function ( geometry ) {
+                var filepath = "./models/svlx/gang.svlx";//"./models/svlx/0132-0005c.svlx";//'./models/svlx/Childrenbed.svlx'
+				loader.load( filepath, function ( geometry ) {
 
 					var mesh = geometry.object;//new THREE.Mesh( geometry, material );
 
-					mesh.position.set( 0, -0.1, - 0.6 );
+					mesh.position.set( 0, -0.6, - 0.6 );
 					mesh.rotation.set(0, 0, 0 );//
-					mesh.scale.set( 0.0001, 0.0001, 0.0001 );
+					mesh.scale.set( 0.00001, 0.00001, 0.00001 );
 
-//					mesh.castShadow = true;
-//					mesh.receiveShadow = true;
+					mesh.castShadow = true;
+					mesh.receiveShadow = true;
 
 					scene.add( mesh );
 
@@ -155,7 +155,7 @@
 				directionalLight.position.set( x, y, z );
 				scene.add( directionalLight );
 
-				directionalLight.castShadow = false;
+				directionalLight.castShadow = true;
 
 				var d = 1;
 				directionalLight.shadow.camera.left = -d;

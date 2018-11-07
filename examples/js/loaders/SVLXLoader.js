@@ -47,7 +47,7 @@ THREE.SVLXloader.prototype = {
                     }
                 }
 
-                //����info
+                //info
                 var infoFileName = /\.info$/i;
                 var infoStr = zip.file(infoFileName);
                 if (infoStr && infoStr.length > 0)
@@ -56,12 +56,21 @@ THREE.SVLXloader.prototype = {
                 }
 
 
-                //����animation
+                //animation
                 //var animationFile = new RegExp('.*.' + 'animation' + '$', 'i');
                 //var animationStr = zip.file(animationFile);
                 //animation = parseAnimation(animationStr[0].asText());
 
-                //����bom
+                //bom 
+				/* {instanceId,
+					parentId,
+					modelId,
+					plcId,
+					visible,
+					materialId,
+					matrix
+					}
+				*/
                 var bomFile = new RegExp('.*.' + 'bom' + '$', 'i');
                 var bomStr = zip.file(bomFile);
                 if (bomStr && bomStr.length > 0)
@@ -70,7 +79,7 @@ THREE.SVLXloader.prototype = {
                 }
 
 
-                //����model
+                //model:instance or model 's attributes
                 var modelFile = new RegExp('.*.' + 'model' + '$', 'i');
                 var modelStr = zip.file(modelFile);
                 if (modelStr && modelStr.length > 0)
@@ -79,7 +88,7 @@ THREE.SVLXloader.prototype = {
                 }
 
 
-                //����material
+                //material
                 var materialFile = new RegExp('.*.' + 'material' + '$', 'i');
                 var materialStr = zip.file(materialFile);
                 if (materialStr && materialStr.length > 0)
@@ -88,7 +97,19 @@ THREE.SVLXloader.prototype = {
                 }
 
 
-                //����lod
+                //lod
+				/*lodObj = {
+                        modelId: modelId,
+                        bbox: bboxValues,
+                        numLod: numLod,
+                        accessorValues: accessorValues
+                    }
+					var accessorValue = {
+						fileIndex: fileIndex,
+						blockOffset: blockOffset,
+						blockLength: blockLength
+					}
+				*/
                 var lodFile = new RegExp('.*.' + 'lod' + '$', 'i');
                 var lodStr = zip.file(lodFile);
                 if (lodStr && lodStr.length > 0)
@@ -97,7 +118,7 @@ THREE.SVLXloader.prototype = {
                 }
 
 
-                //����mesh
+                //mesh
                 var meshFile = new RegExp('.*.' + 'mesh' + '$', 'i');
                 var meshStr = zip.file(meshFile);
                 if (meshStr && meshStr.length > 0)
@@ -106,7 +127,7 @@ THREE.SVLXloader.prototype = {
                 }
 
 
-                //����geo
+                //geo
                 var geoFile = new RegExp('.*.' + 'geo' + '$', 'i');
                 var geoStr = zip.file(geoFile);
                 if (geoStr && geoStr.length > 0)
@@ -115,7 +136,7 @@ THREE.SVLXloader.prototype = {
                 }
 
 
-                //����pmi
+                //pmi
                 var pmiFile = new RegExp('.*.' + 'pmi' + '$', 'i');
                 var pmiStr = zip.file(pmiFile);
                 if (pmiStr && pmiStr.length > 0)
@@ -292,7 +313,7 @@ THREE.SVLXloader.prototype = {
                         var tmpOffset = accessorValue.blockOffset;
 
                         var meshs = [];
-                        while (offset < tmpOffset + tmpLength) {
+                        while (offset < (tmpOffset + tmpLength)) {
                             var meshId = meshView.getUint32(offset, true);
                             offset += 4;
 
@@ -314,6 +335,7 @@ THREE.SVLXloader.prototype = {
                             var paddingNum = meshView.getUint32(offset, true);
                             offset += 4;
 
+							//mesh vertex attribute
                             var vertexValues = [];
                             for (var k = 0; k < vertexNum; k++) {
                                 var value = meshView.getFloat32(offset, true);
@@ -340,8 +362,16 @@ THREE.SVLXloader.prototype = {
                                 uvValues.push(value);
                             }
 
+							var merageFace = true;
+							var vertexBA = new THREE.BufferAttribute(new Float32Array(vertexValues), 3);
+							var normalBA = new THREE.BufferAttribute(new Float32Array(normalValues), 3);
+							var uvBA = new THREE.BufferAttribute(new Float32Array(uvValues), 2);
+
+							var meshIndexs = [];
                             var faces = [];
-                            for (var k = 0; k < faceNum; k++) {
+							var meshMaterialId = 0;
+
+							for (var k = 0; k < faceNum; k++) {
                                 var faceId = meshView.getUint32(offset, true);
                                 offset += 4;
 
@@ -354,18 +384,38 @@ THREE.SVLXloader.prototype = {
                                 var edgeIdNum = meshView.getUint32(offset, true);
                                 offset += 4;
 
-                                var indexs = [];
+								var indexs = [];
                                 //if (indexNum !== 4294967295) {
                                     for (var n = 0; n < indexNum; n++) {
                                         var value = meshView.getUint32(offset, true);
                                         offset += 4;
 
                                         indexs.push(value);
+										if(merageFace){
+											meshIndexs.push(value);
+										}
                                     }
                                 //}
 
-                                //����faceGeometry
-                                var geometry = constructFaceGeometry(indexs, vertexValues, normalValues, uvValues);
+								if(!merageFace){
+									//faceGeometry
+									//var geometry = constructFaceGeometry(indexs, vertexValues, normalValues, uvValues);
+									var geometry = new THREE.BufferGeometry();
+									geometry.addAttribute('position',vertexBA );
+									geometry.addAttribute('normal', normalBA);
+
+									if (uvValues.length > 0) {
+										geometry.addAttribute('uv',uvBA);
+									}
+									geometry.setIndex(new THREE.BufferAttribute(new Uint16Array (indexs),1));
+								}
+								else
+								{
+									if(meshMaterialId ===0){
+										meshMaterialId = materialId;
+									}
+								}
+
 
                                 var edgeIds = [];
                                 //if (edgeIdNum !== 4294967295) {
@@ -376,19 +426,43 @@ THREE.SVLXloader.prototype = {
                                         edgeIds.push(value);
                                     }
                                 //}
+								if(!merageFace){
+									var face = {
+										faceId: faceId,
+										materialId: materialId,
+										indexNum: indexNum,
+										edgeIdNum: edgeIdNum,
+										indexs: indexs,
+										edgeIds: edgeIds,
+										geometry: geometry
+									}
 
-                                var face = {
-                                    faceId: faceId,
-                                    materialId: materialId,
-                                    indexNum: indexNum,
-                                    edgeIdNum: edgeIdNum,
-                                    indexs: indexs,
-                                    edgeIds: edgeIds,
-                                    geometry: geometry
-                                }
-
-                                faces.push(face);
+									faces.push(face);
+								}
                             }
+
+							if(merageFace){
+								var geometry = new THREE.BufferGeometry();
+								geometry.addAttribute('position',vertexBA );
+								geometry.addAttribute('normal', normalBA);
+
+								if (uvValues.length > 0) {
+									geometry.addAttribute('uv',uvBA);
+								}
+								geometry.setIndex(new THREE.BufferAttribute(new Uint16Array (meshIndexs),1));
+
+								var face = {
+									faceId: 0,
+									materialId: meshMaterialId,
+									indexNum: meshIndexs.length,
+									edgeIdNum: 0,
+									indexs: meshIndexs,
+									edgeIds: null,
+									geometry: geometry
+								}
+
+								faces.push(face);
+							}
 
                             var edges = [];
                             for (var k = 0; k < edgeNum; k++) {
@@ -525,6 +599,7 @@ THREE.SVLXloader.prototype = {
             }
 
             //�ļ��ṹ��model-lod-entity-face
+			//badsmells
             function initMeshGeometry(mesh)
             {
                 var modelGeometrys = [];
@@ -792,6 +867,7 @@ THREE.SVLXloader.prototype = {
                 // return topMesh;
             }
 
+			//parse function
             var svlxData = loadDocument(data);
             var svlObj = init(svlxData);
             
