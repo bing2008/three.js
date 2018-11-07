@@ -1,4 +1,7 @@
 var files = {
+	"myTest": [
+	"myTest_loader_svlx",
+	],
 	"webgl": [
 		"webgl_animation_cloth",
 		"webgl_animation_keyframes",
