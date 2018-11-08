@@ -789,7 +789,7 @@ THREE.SVLXloader.prototype = {
                         return item.id === id;
                     });
 
-                    if (tmpMaterialArr !== 0) {
+                    if (tmpMaterialArr.length !== 0) {
                         var diffuseColor = tmpMaterialArr[0].diffuseColor;
                         for (var i = 0; i < 3; i++) {
                             if (diffuseColor[i] < 0) {
