@@ -1,5 +1,6 @@
 var files = {
 	"myTest": [
+	"myTest_test_demo",
 	"myTest_loader_svlx",
 	],
 	"webgl": [

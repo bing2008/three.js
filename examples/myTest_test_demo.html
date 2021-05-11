@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - MyTest_Demo</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+	<body>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> -
+			SVLX loader test by <a href="https://sview.sv3d.cn" target="_blank" rel="noopener">SView</a>. 
+		</div>
+		<!--<script src="js/loaders/SVLXLoader.js"></script>-->
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import Stats from './jsm/libs/stats.module.js';
+
+			import { OrbitControls } from './jsm/controls/OrbitControls.js';
+			import { FBXLoader } from './jsm/loaders/FBXLoader.js';
+			import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+			import { RGBELoader } from './jsm/loaders/RGBELoader.js';
+			import { RoughnessMipmapper } from './jsm/utils/RoughnessMipmapper.js';
+            import { SVLXloader } from './jsm/loaders/SVLXLoader.js';
+
+			var container, stats, controls;
+			var camera, scene, renderer, light;
+
+			var clock = new THREE.Clock();
+
+			var mixer;
+
+			init();
+			render();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.set( 100, 200, 300 );
+
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xa0a0a0 );
+				scene.fog = new THREE.Fog( 0xa0a0a0, 200, 1000 );
+
+				light = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+				light.position.set( 0, 200, 0 );
+				scene.add( light );
+				light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 0, 200, 100 );
+				light.castShadow = true;
+//				light.shadow.camera.top = 180;
+//				light.shadow.camera.bottom = - 100;
+//				light.shadow.camera.left = - 120;
+//				light.shadow.camera.right = 120;
+				light.shadow.camera.near = 3;
+				light.shadow.camera.far = 1000;
+				light.shadow.mapSize.width = 1024;
+				light.shadow.mapSize.height = 1024;
+				scene.add( light );
+				//scene.add( new CameraHelper( light.shadow.camera ) );
+
+				// Ground
+				var mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2000, 2000 ), new THREE.MeshPhongMaterial( { color: 0x999999, depthWrite: false } ) );
+				mesh.rotation.x = - Math.PI / 2;
+                mesh.receiveShadow = true;
+                scene.add( mesh );
+
+				var grid = new THREE.GridHelper( 2000, 20, 0x000000, 0x000000 );
+				grid.material.opacity = 0.2;
+				grid.material.transparent = true;
+				scene.add( grid );
+
+				// user fbx loader
+//				var loader = new FBXLoader();
+//				loader.load( 'models/fbx/Samba Dancing.fbx', function ( object ) {
+//					mixer = new THREE.AnimationMixer( object );
+//					var action = mixer.clipAction( object.animations[ 0 ] );
+//					action.play();
+//					object.traverse( function ( child ) {
+//						if ( child.isMesh ) {
+//							child.castShadow = true;
+//							child.receiveShadow = true;
+//						}
+//				} );
+//					scene.add( object );
+ 
+                // use of RoughnessMipmapper is optional
+                //var roughnessMipmapper = new RoughnessMipmapper( renderer );
+
+//use gltf loader
+//                var loader = new GLTFLoader().setPath( 'models/gltf/motor/' );
+//                loader.load( 'motor.asm.8.gltf', function ( gltf ) {
+//
+////					var loader = new GLTFLoader().setPath( 'models/gltf/DamagedHelmet/glTF/' );
+////					loader.load( 'DamagedHelmet.gltf', function ( gltf ) {
+//                    gltf.scene.traverse( function ( child ) {
+//                        if ( child.isMesh ) {
+//
+//                            // TOFIX RoughnessMipmapper seems to be broken with WebGL 2.0
+//                            // roughnessMipmapper.generateMipmaps( child.material );
+//							child.castShadow = true;
+//							child.receiveShadow = true;
+//                        }
+//
+//                    } );
+//
+//                    var motor = gltf.scene;
+//					motor.position.set( 0.0, 0.4, 0.0 );
+//                    motor.scale.set( 0.001,  0.001,  0.001 );
+//                    motor.castShadow = true;
+//					motor.receiveShadow = true;
+//                    scene.add( motor );
+//                    //roughnessMipmapper.dispose();
+//					render();
+//				} );
+
+				// use svlx loader
+				var filepath = "models/svlx/DamagedHelmet-BlueSkybox.svlx";//"models/svlx/reducer.svlx";
+                var loader = new SVLXloader();
+				loader.load( filepath, function ( geometry ) {
+
+					var mesh = geometry.object;//new THREE.Mesh( geometry, material );
+
+					mesh.position.set( 0, 0.0, 0 );
+					mesh.rotation.set(-Math.PI/2, 0, 0 );
+					mesh.scale.set( 1,  1,  1 );
+
+					mesh.castShadow = true;
+					mesh.receiveShadow = true;
+
+					scene.add( mesh );
+					render();
+				} );
+
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.shadowMap.enabled = true;
+				container.appendChild( renderer.domElement );
+
+				controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render ); // use if there is no animation loop
+				controls.minDistance = 2;
+				controls.maxDistance = 10;
+				controls.target.set( 0, 0, - 0.2 );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				// stats
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				controls.update();
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				render();
+			}
+
+			//
+
+			function render() {
+				renderer.render( scene, camera );
+				stats.update();
+
+			}
+		</script>
+	</body>
+</html>
