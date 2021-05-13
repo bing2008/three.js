@@ -102,7 +102,7 @@ var SVLXloader = ( function () {
                     }
 
 
-                    //model:instance or model 's attributes
+                    //model:instance or model's attributes
                     var modelFile = new RegExp('.*.' + 'model' + '$', 'i');
                     var modelStr = zip.file(modelFile);
                     if (modelStr && modelStr.length > 0)
@@ -264,6 +264,21 @@ var SVLXloader = ( function () {
                     return materialObj;
                 }
 
+                /*
+                LOD
+                [
+                    modelID,            //1 uint32 = 4bytes
+                    bboxValues,         //6 float = 24bytes
+                    numLod,             //1 uint32 = 4bytes
+                    accessorValues:[
+                    {
+                        fileIndex,      //1 uint32 = 4bytes
+                        blockOffset,    //1 uint32 = 4bytes
+                        blockLength,    //1 uint32 = 4bytes
+                     }...],
+                ]
+                 */
+
                 function parseLod(data) {
                     var lodView = new DataView(data);
                     var length = lodView.byteLength;
@@ -315,6 +330,41 @@ var SVLXloader = ( function () {
                     return { lods: lodObjs };
                 }
 
+                /**
+                meshObjs[
+                    meshObj = {
+                        modelId:modelId,
+                        lodMeshs[numLod]:[
+                            lodMesh:{
+                                fileIndex,
+                                meshs[ 
+                                    mesh = {
+                                        meshId: meshId,
+                                        edgeNum: edgeNum,
+                                        faceNum: faceNum,
+                                        paddingNum: paddingNum,
+                                        faces[1]: [         //count=1 when merageFace == true
+                                            face:{
+                                                faceId: 0,
+                                                materialId: meshMaterialId,
+                                                indexNum: meshIndexs.length,
+                                                edgeIdNum: 0,
+                                                indexs: meshIndexs,
+                                                edgeIds: null,
+                                                geometry: geometry
+                                            }
+                                        ]
+                                        ,
+                                        edges: edges,
+                                        paddings: paddings,
+                                        //geometry: geometry
+                                    },...
+                                ]
+                            },...
+                        ],
+                    },...
+                ] 
+                 */
                 function parseMesh(data, lod) {
                     var meshView = new DataView(data);
                     var length = meshView.byteLength;
@@ -358,6 +408,7 @@ var SVLXloader = ( function () {
                                 var paddingNum = meshView.getUint32(offset, true);
                                 offset += 4;
 
+                                //todo:badsmells :不用拷贝，直接引用即可
                                 //mesh vertex attribute
                                 var vertexValues = [];
                                 for (var k = 0; k < vertexNum; k++) {
@@ -386,6 +437,8 @@ var SVLXloader = ( function () {
                                 }
 
                                 var merageFace = true;
+
+                                
                                 var vertexBA = new BufferAttribute(new Float32Array(vertexValues), 3);
                                 var normalBA = new BufferAttribute(new Float32Array(normalValues), 3);
                                 var uvBA = new BufferAttribute(new Float32Array(uvValues), 2);
