@@ -46,7 +46,7 @@
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0xa0a0a0 );
-				scene.fog = new THREE.Fog( 0xa0a0a0, 200, 1000 );
+				//scene.fog = new THREE.Fog( 0xa0a0a0, 200, 1000 );
 
 				light = new THREE.HemisphereLight( 0xffffff, 0x444444 );
 				light.position.set( 0, 200, 0 );
@@ -121,19 +121,19 @@
 				// } );
 
 				// use svlx loader
-				var filepath = "models/svlx/gl.svlx";//"models/svlx/reducer.svlx";//xuangengji//tjal2018
+				var filepath = "models/svlx/feijiyinqin.svlx";//"models/svlx/reducer.svlx";//xuangengji//tjal2018 //gl
                 var loader = new SVLXloader();
 				loader.load( filepath, function ( geometry ) {
 
-					var mesh = geometry.object;//new THREE.Mesh( geometry, material );
+					var mesh = geometry;//new THREE.Mesh( geometry, material );
 
-					mesh.position.set( 0, 1, 0 );
+					mesh.position.set( 0, 0, 0 );
 					mesh.rotation.set(-Math.PI/2, 0, 0 ); //tjal2018 gl
 
-					//mesh.scale.set( 1,  1,  1 ); //飞机引擎
+					mesh.scale.set( 1,  1,  1 ); //飞机引擎
 
 					//mesh.scale.set( 0.1,  0.1,  0.1 );  //xuangengji
-					mesh.scale.set( 0.001,  0.001,  0.001 );  //tjal2018 gl
+					//mesh.scale.set( 0.001,  0.001,  0.001 );  //tjal2018 gl
 
 					// mesh.castShadow = true;
 					// mesh.receiveShadow = true;

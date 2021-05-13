@@ -17,6 +17,8 @@ import {
     BufferAttribute,
     DoubleSide,
     Color,
+    InstancedMesh,
+    DynamicDrawUsage
 } from "../../../build/three.module.js";
 
 import {JSZip} from "./jszip/jszip.min.js"
@@ -125,12 +127,13 @@ var SVLXloader = ( function () {
                             modelId: modelId,
                             bbox: bboxValues,
                             numLod: numLod,
-                            accessorValues: accessorValues
-                        }
-                        var accessorValue = {
-                            fileIndex: fileIndex,
-                            blockOffset: blockOffset,
-                            blockLength: blockLength
+                            accessorValues[]:[
+                                accessorValue = {
+                                    fileIndex: fileIndex,
+                                    blockOffset: blockOffset,
+                                    blockLength: blockLength
+                                }
+                            ]
                         }
                     */
                     var lodFile = new RegExp('.*.' + 'lod' + '$', 'i');
@@ -622,15 +625,18 @@ var SVLXloader = ( function () {
                 }
 
                 function init(svlxData) {
-                    var meshGeometrys = initMeshGeometry(svlxData.mesh);
+                    // var meshGeometrys = initMeshGeometry(svlxData.mesh);
 
-                    var models = initModel(svlxData.model, meshGeometrys);
+                    // var models = initModel(svlxData.model, meshGeometrys);
 
-                    var instances = initInstance(svlxData.bom, svlxData.model, svlxData.material, models);
+                    // var instances = initInstance(svlxData.bom, svlxData.model, svlxData.material, models);
 
-                    var svlxObj = initSVLXObject(instances);
+                    // var svlxObj = initSVLXObject(instances);
 
-                    return svlxObj;
+                    // return svlxObj;
+
+                    return initThreeOjbect(svlxData);
+
                 }
 
                 //�ļ��ṹ��model-lod-entity-face
@@ -871,6 +877,48 @@ var SVLXloader = ( function () {
                     {
                         return object.mesh;
                     }
+                }
+
+                function initThreeOjbect(svlxData){
+                    var root = new Object3D();
+
+                    var material = new MeshPhongMaterial({
+                        color: 0xff0000,
+                        side: DoubleSide,
+                        polygonOffset: true,
+                        polygonOffsetFactor: 1,
+                        polygonOffsetUnits: 0.05
+                    });
+
+                    //mesh with world matrix
+                    for(var i = 0;i<svlxData.mesh.meshObjs.length;i++)
+                    {
+                        var svlMesh = svlxData.mesh.meshObjs[i];
+
+                        var svlInstances = svlxData.bom.instances.filter(function (item, index, meshGeometrys) {
+                            return item.modelId === svlMesh.modelId;
+                        });
+                        var count = svlInstances.length;
+                        var geometry = svlMesh.lodMeshs[0].meshs[0].faces[0].geometry;
+                        var vertexBA = geometry.getAttribute ("position");
+
+                        var strVertx = "x:"  + vertexBA.array[0] + " y:" + vertexBA.array[1] + " z:" + vertexBA.array[2];
+                        console.log("svlMesh ID:" + svlMesh.modelId +" geoIndex:" + geometry.getIndex().count + " geofirstVertx " + strVertx + " instanceCount:" + count);
+                        
+                        //test normal mesh
+                        //const mesh = new Mesh( geometry, material );
+
+                        //instancedMesh
+                        var mesh = new InstancedMesh( geometry, material, count );
+                        mesh.instanceMatrix.setUsage( DynamicDrawUsage ); // will be updated every frame
+                        const matIdent = new Matrix4();
+                        for( var j = 0;j<count;j++){
+                            mesh.setMatrixAt(j,svlInstances[j].matrix);
+                        }
+                        
+                        root.add( mesh );
+                    }
+                    return root;
                 }
 
                 //parse function
