@@ -371,13 +371,19 @@ var SVLXloader = ( function () {
                     var offset = 0;
 
                     var meshObjs = [];
+                    
                     for (var i = 0; i < lod.lods.length; i++) {
-                        var numLod = lod.lods[i].numLod;
+                       var numLod = lod.lods[i].numLod;
+
                         if (numLod === 0)
                         {
                             continue;
                         }
-
+                        if(numLod>1)
+                        { 
+                            console.log("LOD is :"+ munLod);
+                        }
+                        
                         var lodMeshs = [];
                         for (var j = 0; j < numLod; j++)
                         {
@@ -390,12 +396,15 @@ var SVLXloader = ( function () {
                                 var meshId = meshView.getUint32(offset, true);
                                 offset += 4;
 
+                                //vertexNum = vertex count * 3
                                 var vertexNum = meshView.getUint32(offset, true);
                                 offset += 4;
 
+                                //normalNum = normal count * 3
                                 var normalNum = meshView.getUint32(offset, true);
                                 offset += 4;
 
+                                //uvNum = uv count * 2
                                 var uvNum = meshView.getUint32(offset, true);
                                 offset += 4;
 
@@ -408,40 +417,22 @@ var SVLXloader = ( function () {
                                 var paddingNum = meshView.getUint32(offset, true);
                                 offset += 4;
 
-                                //todo:badsmells :不用拷贝，直接引用即可
                                 //mesh vertex attribute
-                                var vertexValues = [];
-                                for (var k = 0; k < vertexNum; k++) {
-                                    var value = meshView.getFloat32(offset, true);
-                                    offset += 4;
-                                    vertexValues.push(value);
-                                }
 
-                                var normalValues = [];
-                                for (var k = 0; k < normalNum; k++) {
-                                    var value = meshView.getFloat32(offset, true);
-                                    offset += 4;
-                                    normalValues.push(value);
-                                }
+                                let vertexArray = new Float32Array(data,offset,vertexNum);
+                                offset += vertexNum * 4;
 
-                                var uvValues = [];
-                                for (var k = 0; k < uvNum; k++) {
-                                    var value = meshView.getFloat32(offset, true);
-                                    offset += 4;
+                                let normalArray = new Float32Array(data, offset, normalNum);
+                                offset += 4 * normalNum;
 
-                                    //if (k % 3 === 2)
-                                    //{
-                                    //    continue;
-                                    //}
-                                    uvValues.push(value);
-                                }
+                                let uvArray = new Float32Array(data, offset, uvNum);
+                                offset += 4 * uvNum;
 
                                 var merageFace = true;
 
-                                
-                                var vertexBA = new BufferAttribute(new Float32Array(vertexValues), 3);
-                                var normalBA = new BufferAttribute(new Float32Array(normalValues), 3);
-                                var uvBA = new BufferAttribute(new Float32Array(uvValues), 2);
+                                var vertexBA = new BufferAttribute(vertexArray, 3);
+                                var normalBA = new BufferAttribute(normalArray, 3);
+                                var uvBA = new BufferAttribute(uvArray, 2);
 
                                 var meshIndexs = [];
                                 var faces = [];
@@ -473,57 +464,60 @@ var SVLXloader = ( function () {
                                         }
                                     //}
 
-                                    if(!merageFace){
-                                        //faceGeometry
-                                        //var geometry = constructFaceGeometry(indexs, vertexValues, normalValues, uvValues);
-                                        var geometry = new BufferGeometry();
-                                        geometry.addAttribute('position',vertexBA );
-                                        geometry.addAttribute('normal', normalBA);
+                                    // if(!merageFace){
+                                    //     //faceGeometry
+                                    //     //var geometry = constructFaceGeometry(indexs, vertexValues, normalValues, uvValues);
+                                    //     var geometry = new BufferGeometry();
+                                    //     geometry.setAttribute('position',vertexBA );
+                                    //     geometry.setAttribute('normal', normalBA);
 
-                                        if (uvValues.length > 0) {
-                                            geometry.addAttribute('uv',uvBA);
-                                        }
-                                        geometry.setIndex(new BufferAttribute(new Uint16Array (indexs),1));
-                                    }
-                                    else
-                                    {
-                                        if(meshMaterialId ===0){
-                                            meshMaterialId = materialId;
-                                        }
-                                    }
+                                    //     if (uvValues.length > 0) {
+                                    //         geometry.setAttribute('uv',uvBA);
+                                    //     }
+                                    //     geometry.setIndex(new BufferAttribute(new Uint16Array (indexs),1));
+                                    // }
+                                    // else
+                                    // {
+                                    //     if(meshMaterialId ===0){
+                                    //         meshMaterialId = materialId;
+                                    //     }
+                                    // }
 
 
                                     var edgeIds = [];
-                                    //if (edgeIdNum !== 4294967295) {
-                                        for (var n = 0; n < edgeIdNum; n++) {
-                                            var value = meshView.getUint32(offset, true);
-                                            offset += 4;
+                                    //don't use edge
+                                    // //if (edgeIdNum !== 4294967295) {
+                                    //     for (var n = 0; n < edgeIdNum; n++) {
+                                    //         var value = meshView.getUint32(offset, true);
+                                    //         offset += 4;
 
-                                            edgeIds.push(value);
-                                        }
-                                    //}
-                                    if(!merageFace){
-                                        var face = {
-                                            faceId: faceId,
-                                            materialId: materialId,
-                                            indexNum: indexNum,
-                                            edgeIdNum: edgeIdNum,
-                                            indexs: indexs,
-                                            edgeIds: edgeIds,
-                                            geometry: geometry
-                                        }
+                                    //         edgeIds.push(value);
+                                    //     }
+                                    // //}
+                                    offset += edgeIdNum * 4;
 
-                                        faces.push(face);
-                                    }
+                                    // if(!merageFace){
+                                    //     var face = {
+                                    //         faceId: faceId,
+                                    //         materialId: materialId,
+                                    //         indexNum: indexNum,
+                                    //         edgeIdNum: edgeIdNum,
+                                    //         indexs: indexs,
+                                    //         edgeIds: edgeIds,
+                                    //         geometry: geometry
+                                    //     }
+
+                                    //     faces.push(face);
+                                    // }
                                 }
 
                                 if(merageFace){
                                     var geometry = new BufferGeometry();
-                                    geometry.addAttribute('position',vertexBA );
-                                    geometry.addAttribute('normal', normalBA);
+                                    geometry.setAttribute('position',vertexBA );
+                                    geometry.setAttribute('normal', normalBA);
 
-                                    if (uvValues.length > 0) {
-                                        geometry.addAttribute('uv',uvBA);
+                                    if (uvArray.length > 0) {
+                                        geometry.setAttribute('uv',uvBA);
                                     }
                                     geometry.setIndex(new BufferAttribute(new Uint16Array (meshIndexs),1));
 
@@ -541,6 +535,7 @@ var SVLXloader = ( function () {
                                 }
 
                                 var edges = [];
+                                //don't use ,but can't jump over this without read it! Bad smell!
                                 for (var k = 0; k < edgeNum; k++) {
                                     var edgeId = meshView.getUint32(offset, true);
                                     offset += 4;
@@ -549,31 +544,34 @@ var SVLXloader = ( function () {
                                     offset += 4;
 
                                     var indexs = [];
-                                    //if (indexNum !== 4294967295) {
-                                        for (var n = 0; n < indexNum; n++) {
-                                            var value = meshView.getUint32(offset, true);
-                                            offset += 4;
+                                    // //if (indexNum !== 4294967295) {
+                                    //     for (var n = 0; n < indexNum; n++) {
+                                    //         var value = meshView.getUint32(offset, true);
+                                    //         offset += 4;
 
-                                            indexs.push(value);
-                                        }
-                                    //}
+                                    //         indexs.push(value);
+                                    //     }
+                                    // //}
+                                    offset += indexNum * 4;
 
-                                    var edge = {
-                                        edgeId: edgeId,
-                                        indexNum: indexNum,
-                                        indexs: indexs
-                                    }
+                                    // var edge = {
+                                    //     edgeId: edgeId,
+                                    //     indexNum: indexNum,
+                                    //     indexs: indexs
+                                    // }
 
-                                    edges.push(edge);
+                                    // edges.push(edge);
                                 }
 
                                 var paddings = [];
-                                for (var k = 0; k < paddingNum; k++) {
-                                    var value = meshView.getUint32(offset, true);
-                                    offset += 4;
+                                //don't use it.
+                                // for (var k = 0; k < paddingNum; k++) {
+                                //     var value = meshView.getUint32(offset, true);
+                                //     offset += 4;
 
-                                    paddings.push(value);
-                                }
+                                //     paddings.push(value);
+                                // }
+                                offset += paddingNum * 4;
 
                                 var mesh = {
                                     meshId: meshId,
@@ -602,63 +600,24 @@ var SVLXloader = ( function () {
                         }
 
                         meshObjs.push(meshObj);
-                    }
+                    } //for (var i = 0; i < lod.lods.length; i++) {
 
                     return { meshObjs: meshObjs };
                 }
 
-                //����ÿ��face��geometry
-                function constructFaceGeometry(indexs, vertexValues, normalValues, uvValues)
-                {
-                    if ((vertexValues.length === 0) || (normalValues.length === 0)) {
-                        return null;
-                    }
-
-                    var hasUV = (uvValues.length > 0);
-
-                    var newVertexValues = [];
-                    var newNormalValues = [];
-                    var newUVValues = [];
-                    for (var i = 0; i < indexs.length; i++) {
-                        var index = indexs[i];
-                        newVertexValues.push(vertexValues[index * 3 + 0]);
-                        newVertexValues.push(vertexValues[index * 3 + 1]);
-                        newVertexValues.push(vertexValues[index * 3 + 2]);
-                        newNormalValues.push(normalValues[index * 3 + 0]);
-                        newNormalValues.push(normalValues[index * 3 + 1]);
-                        newNormalValues.push(normalValues[index * 3 + 2]);
-
-                        if (hasUV) {
-                            newUVValues.push(uvValues[index * 3 + 0]);
-                            newUVValues.push(uvValues[index * 3 + 1]);
-                        }
-                    }
-
-                    var geometry = new BufferGeometry();
-                    geometry.addAttribute('position', new BufferAttribute(new Float32Array(newVertexValues), 3));
-                    geometry.addAttribute('normal', new BufferAttribute(new Float32Array(newNormalValues), 3));
-
-                    if (newUVValues.length > 0) {
-                        geometry.addAttribute('uv', new BufferAttribute(new Float32Array(newUVValues), 2));
-                    }
-                    return geometry;
-                }
 
                 function parseMaterial(data) {
                     var materialObj = JSON.parse(data);
-
                     return materialObj;
                 }
 
                 function parseGeo(data) {
                     var goObj = JSON.parse(data);
-
                     return goObj;
                 }
 
                 function parsePmi(data) {
                     var pmiObj = JSON.parse(data);
-
                     return pmiObj;
                 }
 
@@ -679,15 +638,23 @@ var SVLXloader = ( function () {
                 function initMeshGeometry(mesh)
                 {
                     var modelGeometrys = [];
+
+                    console.log("mesh.meshObjs.length:" + mesh.meshObjs.length);
                     for (var i = 0; i < mesh.meshObjs.length; i++) {
                         var tmpMeshObj = mesh.meshObjs[i];
                         var lodGeometrys = [];
+
+                        //console.log("tmpMeshObj.lodMeshs.length:" + tmpMeshObj.lodMeshs.length);
                         for (var j = 0; j < tmpMeshObj.lodMeshs.length; j++) {
                             var lodMesh = tmpMeshObj.lodMeshs[j];
                             var entityGeometrys = [];
+
+                            //console.log("lodMesh.meshs.length:" + lodMesh.meshs.length);
                             for (var k = 0; k < lodMesh.meshs.length; k++) {
                                 var entityMesh = lodMesh.meshs[k];
                                 var faceGeometrys = [];
+
+                                //console.log("entityMesh.faces.length:" + entityMesh.faces.length);
                                 for (var n = 0; n < entityMesh.faces.length; n++) {
                                     var face = entityMesh.faces[n];
                                     var faceGeometry = {
@@ -754,19 +721,19 @@ var SVLXloader = ( function () {
                         var tmpInstance = bom.instances[i];
 
                         //��ȡgeometry
-                        var tmpArr = models.filter(function (item, index, models) {
+                        var tmpModelArray = models.filter(function (item, index, models) {
                             return item.id === tmpInstance.modelId;
                         });
 
                         var mesh = null;
                         var name = "";
-                        if (tmpArr.length > 0) {
-                            name = tmpArr[0].name;
-                            if (tmpArr[0].lodGeometrys.length > 0)
+                        if (tmpModelArray.length > 0) {
+                            name = tmpModelArray[0].name;
+                            if (tmpModelArray[0].lodGeometrys.length > 0)
                             {
                                 mesh = new Object3D();
                                 //Ĭ�ϼ���lod0����
-                                var entityGeometrys = tmpArr[0].lodGeometrys[0].entityGeometrys;
+                                var entityGeometrys = tmpModelArray[0].lodGeometrys[0].entityGeometrys;
 
                                 for (var j = 0; j < entityGeometrys.length; j++) {
                                     var entityGeometry = entityGeometrys[j];
@@ -780,14 +747,14 @@ var SVLXloader = ( function () {
                                         //����mesh
                                         var tmpMesh = new Mesh(geometry, tmpMaterial.clone());
                                         let newMesh = tmpMesh.clone();
-                                        newMesh.applyMatrix(tmpInstance.matrix);
+                                        newMesh.applyMatrix4(tmpInstance.matrix);
                                         newMesh.updateMatrix();
                                         meshMergeByMaterial(faceGeometry.materialId, newMesh);
 
                                         mesh.add(tmpMesh);
                                     }
                                 }
-                                mesh.applyMatrix(tmpInstance.matrix);
+                                mesh.applyMatrix4(tmpInstance.matrix);
                                 mesh.updateMatrix();
                             }
                         }
@@ -806,32 +773,19 @@ var SVLXloader = ( function () {
                         instances.push(instance);
                     }
 
-                    //���ʵ�����ӹ�ϵ
+                    //set children of instances
                     for (var i = 0; i < instances.length; i++) {
                         var tmpInstance = instances[i];
                         if (tmpInstance.children === undefined) {
                             tmpInstance.children = [];
                         }
-                        //��ȡ��ǰʵ���ĸ�
-                        if (tmpInstance.parentId === 4294967295) {
-                            tmpInstance.parent = "root";
-                        }
-                        else {
-                            //��ǵ�ǰʵ����
-                            var tmpArr = instances.filter(function (item, index, instances) {
-                                return item.instanceId === tmpInstance.parentId;
-                            });
-                            for (var j = 0; j < tmpArr.length; j++) {
-                                tmpInstance.parent = tmpArr[j];
-                            }
-                        }
 
-                        //��ȡ��ǰʵ������
-                        var tmpArr = instances.filter(function (item, index, instances) {
+                        //set children
+                        var tmpModelArray = instances.filter(function (item, index, instances) {
                             return item.parentId === tmpInstance.instanceId;
                         });
-                        for (var j = 0; j < tmpArr.length; j++) {
-                            tmpInstance.children.push(tmpArr[j]);
+                        for (var j = 0; j < tmpModelArray.length; j++) {
+                            tmpInstance.children.push(tmpModelArray[j]);
                         }
                     }
 
@@ -888,25 +842,10 @@ var SVLXloader = ( function () {
                     var trees = [];
                     for (var i = 0; i < instances.length; i++) {
                         var instance = instances[i];
-                        var tmpTree = {
-                            label: instance.instanceName,
-                            name: instance.instanceId,
-                            type: "svlx",
-                            children: []
-                        }
                         if (instance.parentId === 4294967295) {
-                            tree = tmpTree;
+                            // tree = tmpTree;
                             topInstance = instance;
-                        }
-                        trees.push(tmpTree);
-                    }
-
-                    for (var i = 0; i < instances.length; i++) {
-                        var instance = instances[i];
-                        var curTree = trees[i];
-                        var tmpChildren = instance.children;
-                        for (var j = 0; j < tmpChildren.length; j++) {
-                            curTree.children.push(trees[tmpChildren[j].index]);
+                            break;
                         }
                     }
 
@@ -925,22 +864,13 @@ var SVLXloader = ( function () {
                                 obj3d.add(tmpObj3d);
                             }
                         }
-                        obj3d.applyMatrix(object.matrix);
+                        obj3d.applyMatrix4(object.matrix);
                         return obj3d;
                     }
                     else
                     {
                         return object.mesh;
                     }
-                    // var topMesh = new Mesh();
-                    // for(var key in scope.materialMerge){
-                    //     var tempMesh = new Mesh();
-                    //     for(var subMesh of scope.materialMerge[key]){
-                    //         tempMesh.geometry.merge(subMesh.geometry);
-                    //     }
-                    //     topMesh.children.push(tempMesh);
-                    // }
-                    // return topMesh;
                 }
 
                 //parse function
