@@ -883,12 +883,18 @@ var SVLXloader = ( function () {
                     var root = new Object3D();
 
                     var material = new MeshPhongMaterial({
-                        color: 0xff0000,
+                        color: 0xFFFFFF,
                         side: DoubleSide,
                         polygonOffset: true,
                         polygonOffsetFactor: 1,
                         polygonOffsetUnits: 0.05
                     });
+
+                    var materials = svlxData.material.materials;
+                    // var tmpMaterialArr = materials.filter(function (item, index, materials) {
+                    //     return item.id === id;
+                    // });
+
 
                     //mesh with world matrix
                     for(var i = 0;i<svlxData.mesh.meshObjs.length;i++)
@@ -910,10 +916,17 @@ var SVLXloader = ( function () {
 
                         //instancedMesh
                         var mesh = new InstancedMesh( geometry, material, count );
+                        
+                        //set matrixs
                         mesh.instanceMatrix.setUsage( DynamicDrawUsage ); // will be updated every frame
                         const matIdent = new Matrix4();
+
+                        //set colors
+                        //mesh.instanceColor.setUsage( DynamicDrawUsage ); // will be updated every frame
+                        const colorDefault = new Color(Math.random(), Math.random(), Math.random());
                         for( var j = 0;j<count;j++){
                             mesh.setMatrixAt(j,svlInstances[j].matrix);
+                            mesh.setColorAt(j,colorDefault);
                         }
                         
                         root.add( mesh );
