@@ -18,7 +18,10 @@ import {
     DoubleSide,
     Color,
     InstancedMesh,
-    DynamicDrawUsage
+    DynamicDrawUsage,
+    StaticDrawUsage,
+    MeshNormalMaterial
+
 } from "../../../build/three.module.js";
 
 import {JSZip} from "./jszip/jszip.min.js"
@@ -204,7 +207,7 @@ var SVLXloader = ( function () {
                     var bomView = new DataView(data);
                     var length = bomView.byteLength;
                     var offset = 0;
-                    var instances = [];
+                    var instances = {};
                     while (offset < length)
                     {
                         var instanceId = bomView.getUint32(offset, true);
@@ -249,7 +252,7 @@ var SVLXloader = ( function () {
                             matrix: matrix
                         }
 
-                        instances.push(instance);
+                        instances[instanceId] =instance;
                     }
 
                     return { instances: instances };
@@ -879,22 +882,40 @@ var SVLXloader = ( function () {
                     }
                 }
 
+                function traverseInstance(instanceMap,curId,parentMatrix,callback){
+                    var curInstance = instanceMap[curId];
+                    var curMatrix = parentMatrix * curInstance.matrix;
+                    curInstance.worldMatrix = curMatrix;
+
+                    if(callback){
+                        callback(instance);
+                    }
+
+                    for( var id in instanceMap){
+                        var child = instanceMap[id];
+                        if(child.parentId == curId){
+                            traverseInstance(instanceMap,child.instanceId,curMatrix,callback);
+                        }
+                    }
+                }
+
                 function initThreeOjbect(svlxData){
                     var root = new Object3D();
 
-                    var material = new MeshPhongMaterial({
-                        color: 0xFFFFFF,
-                        side: DoubleSide,
-                        polygonOffset: true,
-                        polygonOffsetFactor: 1,
-                        polygonOffsetUnits: 0.05
-                    });
+                    var material = new MeshPhongMaterial();
 
-                    var materials = svlxData.material.materials;
-                    // var tmpMaterialArr = materials.filter(function (item, index, materials) {
-                    //     return item.id === id;
-                    // });
+                    // get material map
+                    var materials = {};
+                    var tmpMaterial = null;
+                    for(var i = 0; i < svlxData.material.materials.length; i++){
+                        tmpMaterial = svlxData.material.materials[i];
+                        materials[tmpMaterial.id] = tmpMaterial;
+                    }
 
+                    //setup instance world matrix
+                    traverseInstance(svlxData.bom.instances,4294967295,new Matrix4(),null);
+
+                    console.log("svlMesh count:" + svlxData.mesh.meshObjs.length + " instanceCount:" + svlxData.bom.instances.length);
 
                     //mesh with world matrix
                     for(var i = 0;i<svlxData.mesh.meshObjs.length;i++)
@@ -905,28 +926,52 @@ var SVLXloader = ( function () {
                             return item.modelId === svlMesh.modelId;
                         });
                         var count = svlInstances.length;
-                        var geometry = svlMesh.lodMeshs[0].meshs[0].faces[0].geometry;
-                        var vertexBA = geometry.getAttribute ("position");
+                        var curFace = svlMesh.lodMeshs[0].meshs[0].faces[0];
+                        var geometry = curFace.geometry;
+                        //var vertexBA = geometry.getAttribute ("position");
+                        var curColor = null;
+                        var curSVLMaterial = materials[curFace.materialId];
+                        if(curSVLMaterial){
+                            curColor = new Color(curSVLMaterial.diffuseColor[0],
+                                curSVLMaterial.diffuseColor[1],
+                                curSVLMaterial.diffuseColor[2],);
+                            console.log("FaceColor:" +"r:"  + curColor.r + " g:" + curColor.g + " b:" + curColor.b);
+                        }
 
-                        var strVertx = "x:"  + vertexBA.array[0] + " y:" + vertexBA.array[1] + " z:" + vertexBA.array[2];
-                        console.log("svlMesh ID:" + svlMesh.modelId +" geoIndex:" + geometry.getIndex().count + " geofirstVertx " + strVertx + " instanceCount:" + count);
+                        //debug
+                        //var strVertx = "x:"  + vertexBA.array[0] + " y:" + vertexBA.array[1] + " z:" + vertexBA.array[2];
+                        //console.log("svlMesh ID:" + svlMesh.modelId +" geoIndex:" + geometry.getIndex().count 
+                        // //+ " geofirstVertx " + strVertx 
+                        // + " instanceCount:" + count);
                         
                         //test normal mesh
                         //const mesh = new Mesh( geometry, material );
 
                         //instancedMesh
                         var mesh = new InstancedMesh( geometry, material, count );
-                        
+                        //mesh.castShadow = true;
+
                         //set matrixs
-                        mesh.instanceMatrix.setUsage( DynamicDrawUsage ); // will be updated every frame
-                        const matIdent = new Matrix4();
+                        mesh.instanceMatrix.setUsage( StaticDrawUsage ); //  DynamicDrawUsage - will be updated every frame 
+                        //const matIdent = new Matrix4();
 
                         //set colors
                         //mesh.instanceColor.setUsage( DynamicDrawUsage ); // will be updated every frame
-                        const colorDefault = new Color(Math.random(), Math.random(), Math.random());
+                        
+                        //loop each instance of prototype
                         for( var j = 0;j<count;j++){
                             mesh.setMatrixAt(j,svlInstances[j].matrix);
-                            mesh.setColorAt(j,colorDefault);
+                            var curInstanceMaterial = materials[svlInstances[j].materialId];
+                            if(curInstanceMaterial){
+                                curColor = new Color(curInstanceMaterial.diffuseColor[0],
+                                    curInstanceMaterial.diffuseColor[1],
+                                    curInstanceMaterial.diffuseColor[2],);
+                            }
+                            if(!curColor){
+                                curColor = new Color(1,0,0);
+                            }
+                            //var curColor = new Color(Math.random(), Math.random(), Math.random());
+                            mesh.setColorAt(j,curColor);
                         }
                         
                         root.add( mesh );
