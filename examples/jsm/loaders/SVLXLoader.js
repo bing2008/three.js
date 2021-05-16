@@ -882,20 +882,77 @@ var SVLXloader = ( function () {
                     }
                 }
 
-                function traverseInstance(instanceMap,curId,parentMatrix,callback){
-                    var curInstance = instanceMap[curId];
-                    var curMatrix = parentMatrix * curInstance.matrix;
-                    curInstance.worldMatrix = curMatrix;
+                //将instances 列表变为树形 2.设置世界矩阵 
 
-                    if(callback){
-                        callback(instance);
-                    }
-
+                function InstanceArrayToTree(instanceMap){
+                    console.log("InstanceArrayToTree begin.");
+                    var root = {};
+                    root.instanceId = 4294967295;
+                    root.matrix = new Matrix4();
+                    root.worldMatrix = new Matrix4();
+                    root.children = [];
+                    //console.log("ins count:",Object.keys(instanceMap).length);
                     for( var id in instanceMap){
                         var child = instanceMap[id];
-                        if(child.parentId == curId){
-                            traverseInstance(instanceMap,child.instanceId,curMatrix,callback);
+
+                        //var parentName = "";
+                        if(child.parentId ==4294967295) {
+                            root.children.push(child);
+                            child.parent = root;
+
+                            //parentName = child.parentId;
                         }
+                        else{
+                            var parent = instanceMap[child.parentId];
+                            if(parent){
+                                if(parent.children == null){
+                                    parent.children = [];
+                                }
+                                parent.children.push(child);
+                                child.parent = parent;
+
+                                //parentName = child.parentId;//parent.instanceName;
+                            } else {
+
+                                //parentName = "not find parent:" +child.parentId;;
+                            }
+                        }
+                        //console.log("ins name:" + id + " parent:" + parentName);
+                    }
+
+                    console.log("InstanceArrayToTree end.");
+                    return root;
+                }
+
+                var sequenceId = 0;
+                function updateWorldMatrix(instance,level){
+                    sequenceId ++;
+                    level++;
+
+                    instance.worldMatrix = instance.matrix.clone();
+
+                    //var parentId = "";
+                    if(instance.parent){
+                        instance.worldMatrix.premultiply(instance.parent.worldMatrix);
+                        //parentId = instance.parent.instanceId;
+                    }else{
+                        //parentId = "no parent.";
+                    }
+
+                    var matChanded = true;
+                    if(instance.worldMatrix.equals(instance.matrix)){
+                        matChanded = false;
+                    }
+                    // console.log("seq:" + sequenceId + " level:" + level +" curIns :",instance.instanceId +" parent:" + parentId +" mat change:"+matChanded);
+                    // console.log("localMatrix:" + instance.matrix.elements);
+                    // console.log("worldMatrix:" + instance.worldMatrix.elements);
+
+                    if(instance.children){
+                        for(var i=0;i< instance.children.length;i++){
+                            var child = instance.children[i];
+                            updateWorldMatrix(child,level);
+                        }
+
                     }
                 }
 
@@ -903,7 +960,8 @@ var SVLXloader = ( function () {
                     var root = new Object3D();
 
                     var material = new MeshPhongMaterial();
-
+                    // material.transparent = true;
+                    // material.opacity = 0.5;
                     // get material map
                     var materials = {};
                     var tmpMaterial = null;
@@ -913,19 +971,32 @@ var SVLXloader = ( function () {
                     }
 
                     //setup instance world matrix
-                    traverseInstance(svlxData.bom.instances,4294967295,new Matrix4(),null);
+                    //traverseInstance(svlxData.bom.instances,4294967295,new Matrix4(),null);
+                    var rootIns = InstanceArrayToTree(svlxData.bom.instances);
 
-                    console.log("svlMesh count:" + svlxData.mesh.meshObjs.length + " instanceCount:" + svlxData.bom.instances.length);
+                    console.log("updateWorldMatrix begin.");
+                    updateWorldMatrix(rootIns,0);
+                    console.log("updateWorldMatrix end.");
+
+                    console.log("svlMesh count:" + svlxData.mesh.meshObjs.length + " instanceCount:" + Object.keys(svlxData.bom.instances).length);
 
                     //mesh with world matrix
                     for(var i = 0;i<svlxData.mesh.meshObjs.length;i++)
                     {
                         var svlMesh = svlxData.mesh.meshObjs[i];
 
-                        var svlInstances = svlxData.bom.instances.filter(function (item, index, meshGeometrys) {
-                            return item.modelId === svlMesh.modelId;
-                        });
-                        var count = svlInstances.length;
+                        // var svlInstances = svlxData.bom.instances.filter(function (item, index, meshGeometrys) {
+                        //     return item.modelId === svlMesh.modelId;
+                        // });
+                        var svlInstancesByModelId = [];
+                        for(var id in svlxData.bom.instances){
+                            var curInstance = svlxData.bom.instances[id];
+                            if(curInstance.modelId == svlMesh.modelId){
+                                svlInstancesByModelId.push(curInstance);
+                            }
+                        }
+
+                        var count = svlInstancesByModelId.length;
                         var curFace = svlMesh.lodMeshs[0].meshs[0].faces[0];
                         var geometry = curFace.geometry;
                         //var vertexBA = geometry.getAttribute ("position");
@@ -960,8 +1031,9 @@ var SVLXloader = ( function () {
                         
                         //loop each instance of prototype
                         for( var j = 0;j<count;j++){
-                            mesh.setMatrixAt(j,svlInstances[j].matrix);
-                            var curInstanceMaterial = materials[svlInstances[j].materialId];
+                            mesh.setMatrixAt(j,svlInstancesByModelId[j].worldMatrix);//worldMatrix//matrix
+
+                            var curInstanceMaterial = materials[svlInstancesByModelId[j].materialId];
                             if(curInstanceMaterial){
                                 curColor = new Color(curInstanceMaterial.diffuseColor[0],
                                     curInstanceMaterial.diffuseColor[1],
@@ -970,7 +1042,7 @@ var SVLXloader = ( function () {
                             if(!curColor){
                                 curColor = new Color(1,0,0);
                             }
-                            //var curColor = new Color(Math.random(), Math.random(), Math.random());
+                            var curColor = new Color(Math.random(), Math.random(), Math.random());
                             mesh.setColorAt(j,curColor);
                         }
                         
